@@ -534,12 +534,10 @@ where
 
         let previous_block_height = if !dry_run {
             block.header_to_produce.height().pred()
+        } else if self.config.allow_historical_dry_run {
+            block.header_to_produce.height().pred()
         } else {
-            if self.config.allow_historical_dry_run {
-                block.header_to_produce.height().pred()
-            } else {
-                None
-            }
+            None
         };
 
         let instance_without_input =
@@ -634,12 +632,10 @@ where
     {
         let previous_block_height = if !dry_run {
             block.header_to_produce.height().pred()
+        } else if self.config.allow_historical_dry_run {
+            block.header_to_produce.height().pred()
         } else {
-            if self.config.allow_historical_dry_run {
-                block.header_to_produce.height().pred()
-            } else {
-                None
-            }
+            None
         };
         let relayer = self.relayer_view_provider.latest_view()?;
 
