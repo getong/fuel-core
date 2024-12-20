@@ -40,9 +40,9 @@ pub struct BlockCommitterDaBlockCosts<BlockCommitter> {
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
 pub struct RawDaBlockCosts {
     /// Sequence number (Monotonically increasing nonce)
-    pub sequence_number: u32,
+    pub bundle_id: u32,
     /// The range of blocks that the costs apply to
-    pub blocks_range: core::ops::Range<u32>,
+    pub blocks_heights: Vec<u32>,
     /// The DA block height of the last transaction for the range of blocks
     pub da_block_height: DaBlockHeight,
     /// Rolling sum cost of posting blobs (wei)
@@ -54,8 +54,13 @@ pub struct RawDaBlockCosts {
 impl From<&RawDaBlockCosts> for DaBlockCosts {
     fn from(raw_da_block_costs: &RawDaBlockCosts) -> Self {
         DaBlockCosts {
-            l2_block_range: raw_da_block_costs.blocks_range.clone(),
-            blob_size_bytes: raw_da_block_costs.total_size_bytes,
+            bundle_id: raw_da_block_costs.bundle_id,
+            l2_blocks: raw_da_block_costs
+                .blocks_heights
+                .clone()
+                .into_iter()
+                .collect(),
+            bundle_size_bytes: raw_da_block_costs.total_size_bytes,
             blob_cost_wei: raw_da_block_costs.total_cost,
         }
     }
@@ -78,9 +83,9 @@ where
 {
     async fn request_da_block_cost(&mut self) -> DaBlockCostsResult<DaBlockCosts> {
         let raw_da_block_costs = match self.last_raw_da_block_costs {
-            Some(ref last_value) => self
-                .client
-                .get_costs_by_seqno(last_value.sequence_number + 1),
+            Some(ref last_value) => {
+                self.client.get_costs_by_seqno(last_value.bundle_id + 1)
+            }
             _ => self.client.get_latest_costs(),
         }
         .await?;
@@ -94,7 +99,7 @@ where
             |costs: DaBlockCostsResult<DaBlockCosts>, last_value| {
                 let costs = costs.expect("Defined to be OK");
                 let blob_size_bytes = costs
-                    .blob_size_bytes
+                    .bundle_size_bytes
                     .checked_sub(last_value.total_size_bytes)
                     .ok_or(anyhow!("Blob size bytes underflow"))?;
                 let blob_cost_wei = raw_da_block_costs
@@ -102,7 +107,7 @@ where
                     .checked_sub(last_value.total_cost)
                     .ok_or(anyhow!("Blob cost wei underflow"))?;
                 Ok(DaBlockCosts {
-                    blob_size_bytes,
+                    bundle_size_bytes: blob_size_bytes,
                     blob_cost_wei,
                     ..costs
                 })
@@ -111,6 +116,10 @@ where
 
         self.last_raw_da_block_costs = Some(raw_da_block_costs.clone());
         Ok(da_block_costs)
+    }
+    async fn set_last_value(&mut self, bundle_id: u32) -> DaBlockCostsResult<()> {
+        self.last_raw_da_block_costs = self.client.get_costs_by_seqno(bundle_id).await?;
+        Ok(())
     }
 }
 
@@ -197,9 +206,12 @@ mod tests {
             // arbitrary logic to generate a new value
             let mut value = self.value.clone();
             if let Some(value) = &mut value {
-                value.sequence_number = seq_no;
-                value.blocks_range =
-                    value.blocks_range.end * seq_no..value.blocks_range.end * seq_no + 10;
+                value.bundle_id = seq_no;
+                value.blocks_heights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                    .to_vec()
+                    .iter()
+                    .map(|x| x * seq_no)
+                    .collect();
                 value.da_block_height =
                     value.da_block_height + ((seq_no + 1) as u64).into();
                 value.total_cost += 1;
@@ -217,8 +229,8 @@ mod tests {
 
     fn test_da_block_costs() -> RawDaBlockCosts {
         RawDaBlockCosts {
-            sequence_number: 1,
-            blocks_range: 0..10,
+            bundle_id: 1,
+            blocks_heights: (0..10).collect(),
             da_block_height: 1u64.into(),
             total_cost: 1,
             total_size_bytes: 1,
@@ -254,7 +266,7 @@ mod tests {
         let actual = block_committer.request_da_block_cost().await.unwrap();
 
         // then
-        assert_ne!(da_block_costs.blocks_range, actual.l2_block_range);
+        assert_ne!(da_block_costs.blocks_heights, actual.l2_blocks);
     }
 
     #[tokio::test]
@@ -292,8 +304,9 @@ mod tests {
             // arbitrary logic to generate a new value
             let mut value = self.value.clone();
             if let Some(value) = &mut value {
-                value.sequence_number = seq_no;
-                value.blocks_range = value.blocks_range.end..value.blocks_range.end + 10;
+                value.bundle_id = seq_no;
+                value.blocks_heights =
+                    value.blocks_heights.iter().map(|x| x + seq_no).collect();
                 value.da_block_height = value.da_block_height + 1u64.into();
                 value.total_cost -= 1;
                 value.total_size_bytes -= 1;
