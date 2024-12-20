@@ -8,10 +8,19 @@ use fuel_core::{
         FuelService,
     },
 };
-use fuel_core_storage::transactional::AtomicView;
+use fuel_core_client::client::FuelClient;
+use fuel_core_storage::{
+    tables::ContractsRawCode,
+    transactional::{
+        AtomicView,
+        ReadTransaction,
+    },
+    StorageAsMut,
+};
 use fuel_core_types::{
     fuel_tx::{
         AssetId,
+        ContractId,
         Input,
         Output,
         Transaction,
@@ -21,6 +30,7 @@ use fuel_core_types::{
     },
     fuel_types::BlockHeight,
 };
+use fuel_core_upgradable_executor::executor::Overrides;
 use futures::StreamExt;
 use itertools::Itertools;
 use rand::{
@@ -105,8 +115,14 @@ async fn validate_block_at_any_height__only_transfers() -> anyhow::Result<()> {
         // When
         tracing::info!("Validating block {i} at height {}", height_to_execute);
         let result = node.shared.executor.validate(&block);
+        let client = FuelClient::from(node.bound_address);
+        let tx = block.transactions()[0].clone();
+        let dry_run_result = client
+            .dry_run_opt(&[tx], None, None, Some(height_to_execute))
+            .await;
 
         // Then
+        let _ = dry_run_result.expect("Dry run should succeed");
         let height_to_execute: BlockHeight = height_to_execute.into();
         let result = result.unwrap();
         let expected_changes = database_modifications.get(&height_to_execute).unwrap();
@@ -293,6 +309,67 @@ async fn rollback_to__should_work_with_empty_gas_price_database() -> anyhow::Res
 
     // Then
     result.expect("Rollback should succeed");
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn validate_block_at_any_height__mainnet() -> anyhow::Result<()> {
+    let args = [
+        "_IGNORED_",
+        "--port",
+        "0",
+        "--debug",
+        "--poa-instant",
+        "false",
+        "--utxo-validation",
+        "--state-rewind-duration",
+        "136y",
+        "--db-path",
+        "/Users/green/.fuel-mainnet-3",
+        "--snapshot",
+        "/Users/green/fuel/chain-configuration/ignition",
+    ];
+
+    let node = fuel_core_bin::cli::run::get_service(
+        fuel_core_bin::cli::run::Command::parse_from(args),
+    )
+    .await?;
+
+    node.start_and_await().await?;
+
+    // Given
+    let view = node.shared.database.on_chain().latest_view().unwrap();
+    let height_to_execute = 6006774u32.into();
+
+    // When
+    let block = view.get_full_block(&height_to_execute).unwrap().unwrap();
+
+    // Then
+    tracing::info!("Validating block at height {}", *height_to_execute);
+
+    const CONTRACT: &[u8] = &[0, 0, 0];
+    // const CONTRACT: &[u8] = include_bytes!("/Users/green/Downloads/market_fixed.bin");
+
+    let contract_id: ContractId =
+        "0x657ab45a6eb98a4893a99fd104347179151e8b3828fd8f2a108cc09770d1ebae"
+            .parse()
+            .unwrap();
+
+    let mut tx = view.read_transaction();
+    tx.storage_as_mut::<ContractsRawCode>()
+        .insert(&contract_id, CONTRACT)
+        .unwrap();
+
+    let overrides = Overrides {
+        on_chain_changes: tx.into_changes(),
+    };
+
+    let result = node
+        .shared
+        .executor
+        .validate_with_overrides(&block, Some(overrides));
+    tracing::info!("Result: {:?}", result);
 
     Ok(())
 }

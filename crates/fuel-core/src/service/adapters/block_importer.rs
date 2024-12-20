@@ -111,7 +111,7 @@ impl Validator for ExecutorAdapter {
         &self,
         block: &Block,
     ) -> ExecutorResult<UncommittedValidationResult<Changes>> {
-        self.executor.validate(block)
+        self.validate_with_overrides(block, None)
     }
 }
 

@@ -202,6 +202,7 @@ mod tests {
             backtrace: config.backtrace,
             utxo_validation_default: config.utxo_validation_default,
             native_executor_version: None,
+            allow_historical_dry_run: true,
         };
 
         let database = add_consensus_parameters(database, &config.consensus_parameters);

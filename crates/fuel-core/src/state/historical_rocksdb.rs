@@ -115,9 +115,13 @@ where
         let mut reverse_changes = Changes::default();
 
         for (column, column_changes) in changes {
-            let results = self
-                .db
-                .multi_get(*column, column_changes.iter().map(|(k, _)| k))?;
+            let input_keys_are_sorted = true;
+
+            let results = self.db.multi_get(
+                *column,
+                column_changes.iter().map(|(k, _)| k),
+                input_keys_are_sorted,
+            )?;
 
             let entry = reverse_changes
                 .entry(*column)

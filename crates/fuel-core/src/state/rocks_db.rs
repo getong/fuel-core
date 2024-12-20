@@ -556,6 +556,7 @@ where
         &self,
         column: u32,
         iterator: I,
+        input_keys_are_sorted: bool,
     ) -> DatabaseResult<Vec<Option<Vec<u8>>>>
     where
         I: Iterator<Item = K>,
@@ -565,7 +566,12 @@ where
         let cl = self.cf_u32(column);
         let results = self
             .db
-            .multi_get_cf_opt(iterator.map(|k| (&cl, k)), &self.read_options)
+            .batched_multi_get_cf_opt(
+                &cl,
+                iterator,
+                input_keys_are_sorted,
+                &self.read_options,
+            )
             .into_iter()
             .map(|el| {
                 self.metrics.read_meter.inc();
@@ -573,7 +579,7 @@ where
                 el.map(|value| {
                     value.map(|vec| {
                         self.metrics.bytes_read.inc_by(vec.len() as u64);
-                        vec
+                        vec.to_vec()
                     })
                 })
                 .map_err(|err| DatabaseError::Other(err.into()))

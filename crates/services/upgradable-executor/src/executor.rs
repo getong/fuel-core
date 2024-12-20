@@ -49,6 +49,10 @@ use fuel_core_types::{
 };
 use std::sync::Arc;
 
+use fuel_core_storage::transactional::{
+    ConflictPolicy,
+    StorageTransaction,
+};
 #[cfg(feature = "wasm-executor")]
 use fuel_core_storage::{
     not_found,
@@ -79,6 +83,11 @@ enum ExecutionStrategy {
         /// The compiled WASM module of the native executor bytecode.
         module: wasmtime::Module,
     },
+}
+
+/// The overrides for the execution.
+pub struct Overrides {
+    pub on_chain_changes: Changes,
 }
 
 /// The upgradable executor supports the WASM version of the state transition function.
@@ -370,8 +379,16 @@ where
         &self,
         block: &Block,
     ) -> ExecutorResult<Uncommitted<ValidationResult, Changes>> {
+        self.validate_with_overrides(block, None)
+    }
+
+    pub fn validate_with_overrides(
+        &self,
+        block: &Block,
+        overrides: Option<Overrides>,
+    ) -> ExecutorResult<Uncommitted<ValidationResult, Changes>> {
         let options = self.config.as_ref().into();
-        self.validate_inner(block, options)
+        self.validate_inner(block, options, overrides)
     }
 
     #[cfg(feature = "wasm-executor")]
@@ -433,12 +450,15 @@ where
         &self,
         block: &Block,
         options: ExecutionOptions,
+        overrides: Option<Overrides>,
     ) -> ExecutorResult<Uncommitted<ValidationResult, Changes>> {
         let block_version = block.header().state_transition_bytecode_version;
         let native_executor_version = self.native_executor_version();
         if block_version == native_executor_version {
             match &self.execution_strategy {
-                ExecutionStrategy::Native => self.native_validate_inner(block, options),
+                ExecutionStrategy::Native => {
+                    self.native_validate_inner(block, options, overrides)
+                }
                 ExecutionStrategy::Wasm { module } => {
                     let maybe_blocks_module = self.get_module(block_version).ok();
                     if let Some(blocks_module) = maybe_blocks_module {
@@ -515,8 +535,11 @@ where
         let previous_block_height = if !dry_run {
             block.header_to_produce.height().pred()
         } else {
-            // TODO: https://github.com/FuelLabs/fuel-core/issues/2062
-            None
+            if self.config.allow_historical_dry_run {
+                block.header_to_produce.height().pred()
+            } else {
+                None
+            }
         };
 
         let instance_without_input =
@@ -612,8 +635,11 @@ where
         let previous_block_height = if !dry_run {
             block.header_to_produce.height().pred()
         } else {
-            // TODO: https://github.com/FuelLabs/fuel-core/issues/2062
-            None
+            if self.config.allow_historical_dry_run {
+                block.header_to_produce.height().pred()
+            } else {
+                None
+            }
         };
         let relayer = self.relayer_view_provider.latest_view()?;
 
@@ -632,18 +658,40 @@ where
         &self,
         block: &Block,
         options: ExecutionOptions,
+        overrides: Option<Overrides>,
     ) -> ExecutorResult<Uncommitted<ValidationResult, Changes>> {
         let previous_block_height = block.header().height().pred();
         let relayer = self.relayer_view_provider.latest_view()?;
 
         if let Some(previous_block_height) = previous_block_height {
             let database = self.storage_view_provider.view_at(&previous_block_height)?;
-            ExecutionInstance::new(relayer, database, options)
-                .validate_without_commit(block)
+
+            if let Some(overrides) = overrides {
+                let on_chain = StorageTransaction::transaction(
+                    database,
+                    ConflictPolicy::Overwrite,
+                    overrides.on_chain_changes,
+                );
+                ExecutionInstance::new(relayer, on_chain, options)
+                    .validate_without_commit(block)
+            } else {
+                ExecutionInstance::new(relayer, database, options)
+                    .validate_without_commit(block)
+            }
         } else {
             let database = self.storage_view_provider.latest_view()?;
-            ExecutionInstance::new(relayer, database, options)
-                .validate_without_commit(block)
+            if let Some(overrides) = overrides {
+                let on_chain = StorageTransaction::transaction(
+                    database,
+                    ConflictPolicy::Overwrite,
+                    overrides.on_chain_changes,
+                );
+                ExecutionInstance::new(relayer, on_chain, options)
+                    .validate_without_commit(block)
+            } else {
+                ExecutionInstance::new(relayer, database, options)
+                    .validate_without_commit(block)
+            }
         }
     }
 

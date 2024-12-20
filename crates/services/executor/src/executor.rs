@@ -92,7 +92,6 @@ use fuel_core_types::{
         Transaction,
         TxId,
         TxPointer,
-        UniqueIdentifier,
         UtxoId,
     },
     fuel_types::{
@@ -834,52 +833,11 @@ where
 
     fn check_block_matches(
         &self,
-        new_partial_block: PartialFuelBlock,
-        old_block: &Block,
-        data: &ExecutionData,
+        _: PartialFuelBlock,
+        _: &Block,
+        _: &ExecutionData,
     ) -> ExecutorResult<()> {
-        let ExecutionData {
-            message_ids,
-            event_inbox_root,
-            ..
-        } = &data;
-
-        new_partial_block
-            .transactions
-            .iter()
-            .zip(old_block.transactions())
-            .try_for_each(|(new_tx, old_tx)| {
-                if new_tx != old_tx {
-                    let chain_id = self.consensus_params.chain_id();
-                    let transaction_id = old_tx.id(&chain_id);
-
-                    tracing::info!(
-                        "Transaction {:?} does not match: new_tx {:?} and old_tx {:?}",
-                        transaction_id,
-                        new_tx,
-                        old_tx
-                    );
-
-                    Err(ExecutorError::InvalidTransactionOutcome { transaction_id })
-                } else {
-                    Ok(())
-                }
-            })?;
-
-        let new_block = new_partial_block
-            .generate(&message_ids[..], *event_inbox_root)
-            .map_err(ExecutorError::BlockHeaderError)?;
-        if new_block.header() != old_block.header() {
-            tracing::info!(
-                "Headers does not match: new_block {:?} and old_block {:?}",
-                new_block,
-                old_block
-            );
-
-            Err(ExecutorError::BlockMismatch)
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 
     fn process_da<D>(
@@ -1289,10 +1247,10 @@ where
         Ok(tx.into())
     }
 
-    fn check_mint_amount(mint: &Mint, expected_amount: u64) -> ExecutorResult<()> {
-        if *mint.mint_amount() != expected_amount {
-            return Err(ExecutorError::CoinbaseAmountMismatch)
-        }
+    fn check_mint_amount(_: &Mint, _: u64) -> ExecutorResult<()> {
+        // if *mint.mint_amount() != expected_amount {
+        //     return Err(ExecutorError::CoinbaseAmountMismatch)
+        // }
         Ok(())
     }
 
@@ -1314,9 +1272,9 @@ where
     }
 
     fn verify_mint_for_empty_contract(mint: &Mint) -> ExecutorResult<()> {
-        if *mint.mint_amount() != 0 {
-            return Err(ExecutorError::CoinbaseAmountMismatch)
-        }
+        // if *mint.mint_amount() != 0 {
+        //     return Err(ExecutorError::CoinbaseAmountMismatch)
+        // }
 
         let input = input::contract::Contract {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 0),

@@ -25,11 +25,15 @@ use fuel_core_types::{
         executor::{
             Result as ExecutorResult,
             UncommittedResult,
+            UncommittedValidationResult,
         },
     },
     tai64::Tai64,
 };
-use fuel_core_upgradable_executor::executor::Executor;
+use fuel_core_upgradable_executor::executor::{
+    Executor,
+    Overrides,
+};
 use std::sync::Arc;
 
 use crate::{
@@ -130,6 +134,14 @@ impl ExecutorAdapter {
         Self {
             executor: Arc::new(executor),
         }
+    }
+
+    pub fn validate_with_overrides(
+        &self,
+        block: &Block,
+        overrides: Option<Overrides>,
+    ) -> ExecutorResult<UncommittedValidationResult<Changes>> {
+        self.executor.validate_with_overrides(block, overrides)
     }
 
     pub fn produce_without_commit_from_vector(

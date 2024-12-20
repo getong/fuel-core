@@ -321,19 +321,23 @@ where
         let view = self.view_provider.latest_view()?;
         let latest_height = view.latest_height().unwrap_or_default();
 
-        let simulated_height = height.unwrap_or_else(|| {
-            latest_height
+        let header = if let Some(simulated_height) = height {
+            let block = view.get_block(&simulated_height)?;
+
+            block.header().into()
+        } else {
+            let simulated_height = latest_height
                 .succ()
-                .expect("It is impossible to overflow the current block height")
-        });
+                .expect("It is impossible to overflow the current block height");
 
-        let simulated_time = time.unwrap_or_else(|| {
-            view.get_block(&latest_height)
-                .map(|block| block.header().time())
-                .unwrap_or(Tai64::UNIX_EPOCH)
-        });
+            let simulated_time = time.unwrap_or_else(|| {
+                view.get_block(&latest_height)
+                    .map(|block| block.header().time())
+                    .unwrap_or(Tai64::UNIX_EPOCH)
+            });
 
-        let header = self.new_header(simulated_height, simulated_time, &view)?;
+            self.new_header(simulated_height, simulated_time, &view)?
+        };
 
         let gas_price = if let Some(inner) = gas_price {
             inner
