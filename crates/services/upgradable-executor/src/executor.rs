@@ -489,11 +489,12 @@ where
         &self,
         block: &Block,
         options: ExecutionOptions,
+        overrides: Option<Overrides>,
     ) -> ExecutorResult<Uncommitted<ValidationResult, Changes>> {
         let block_version = block.header().state_transition_bytecode_version;
         let native_executor_version = self.native_executor_version();
         if block_version == native_executor_version {
-            self.native_validate_inner(block, options)
+            self.native_validate_inner(block, options, overrides)
         } else {
             Err(ExecutorError::Other(format!(
                 "Not supported version `{block_version}`. Expected version is `{}`",

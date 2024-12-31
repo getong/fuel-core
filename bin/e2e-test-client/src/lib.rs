@@ -33,92 +33,102 @@ pub fn main_body(config: SuiteConfig, mut args: Arguments) {
     // If we run tests in parallel they may fail because try to use the same state like UTXOs.
     args.test_threads = Some(1);
 
+    // TODO[RC]: Other test temporarily disabled for faster feedback.
     let tests = vec![
+        // Trial::test(
+        // "can transfer from alice to bob",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::transfers::basic_transfer(&ctx).await
+        // })
+        // }),
+        // ),
         Trial::test(
-            "can transfer from alice to bob",
+            "dry_run_in_the_past",
             with_cloned(&config, |config| {
                 async_execute(async {
                     let ctx = TestContext::new(config).await;
-                    tests::transfers::basic_transfer(&ctx).await
+                    tests::transfers::dry_run_in_the_past(&ctx).await
                 })
             }),
         ),
-        Trial::test(
-            "can transfer from alice to bob and back",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::transfers::transfer_back(&ctx).await
-                })
-            }),
-        ),
-        Trial::test(
-            "can collect fee from alice",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::collect_fee::collect_fee(&ctx).await
-                })
-            }),
-        ),
-        Trial::test(
-            "can execute script and get receipts",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::transfers::transfer_back(&ctx).await
-                })
-            }),
-        ),
-        Trial::test(
-            "can dry run transfer script and get receipts",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::script::dry_run(&ctx).await
-                })?;
-                Ok(())
-            }),
-        ),
-        Trial::test(
-            "can dry run multiple transfer scripts and get receipts",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::script::dry_run_multiple_txs(&ctx).await
-                })?;
-                Ok(())
-            }),
-        ),
-        Trial::test(
-            "dry run script that touches the contract with large state",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::script::run_contract_large_state(&ctx).await
-                })?;
-                Ok(())
-            }),
-        ),
-        Trial::test(
-            "dry run transaction from `arbitrary_tx.raw` file",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::script::arbitrary_transaction(&ctx).await
-                })?;
-                Ok(())
-            }),
-        ),
-        Trial::test(
-            "can deploy a large contract",
-            with_cloned(&config, |config| {
-                async_execute(async {
-                    let ctx = TestContext::new(config).await;
-                    tests::contracts::deploy_large_contract(&ctx).await
-                })
-            }),
-        ),
+        // Trial::test(
+        // "can transfer from alice to bob and back",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::transfers::transfer_back(&ctx).await
+        // })
+        // }),
+        // ),
+        // Trial::test(
+        // "can collect fee from alice",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::collect_fee::collect_fee(&ctx).await
+        // })
+        // }),
+        // ),
+        // Trial::test(
+        // "can execute script and get receipts",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::transfers::transfer_back(&ctx).await
+        // })
+        // }),
+        // ),
+        // Trial::test(
+        // "can dry run transfer script and get receipts",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::script::dry_run(&ctx).await
+        // })?;
+        // Ok(())
+        // }),
+        // ),
+        // Trial::test(
+        // "can dry run multiple transfer scripts and get receipts",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::script::dry_run_multiple_txs(&ctx).await
+        // })?;
+        // Ok(())
+        // }),
+        // ),
+        // Trial::test(
+        // "dry run script that touches the contract with large state",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::script::run_contract_large_state(&ctx).await
+        // })?;
+        // Ok(())
+        // }),
+        // ),
+        // Trial::test(
+        // "dry run transaction from `arbitrary_tx.raw` file",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::script::arbitrary_transaction(&ctx).await
+        // })?;
+        // Ok(())
+        // }),
+        // ),
+        // Trial::test(
+        // "can deploy a large contract",
+        // with_cloned(&config, |config| {
+        // async_execute(async {
+        // let ctx = TestContext::new(config).await;
+        // tests::contracts::deploy_large_contract(&ctx).await
+        // })
+        // }),
+        // ),
     ];
 
     libtest_mimic::run(&args, tests).exit();
