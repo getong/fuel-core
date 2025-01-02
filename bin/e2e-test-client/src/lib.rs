@@ -49,7 +49,7 @@ pub fn main_body(config: SuiteConfig, mut args: Arguments) {
             with_cloned(&config, |config| {
                 async_execute(async {
                     let ctx = TestContext::new(config).await;
-                    tests::transfers::dry_run_in_the_past(&ctx).await
+                    tests::transfers::dry_run_transaction_in_the_past(&ctx).await
                 })
             }),
         ),

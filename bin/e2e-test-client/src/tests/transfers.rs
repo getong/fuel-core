@@ -100,7 +100,7 @@ fn transfer_transaction(
     builder.finalize_as_transaction()
 }
 
-pub async fn dry_run_in_the_past(ctx: &TestContext) -> Result<(), Failed> {
+pub async fn dry_run_transaction_in_the_past(ctx: &TestContext) -> Result<(), Failed> {
     const FULL_AMOUNT: u64 = 1152921504606846976;
     const HALF_AMOUNT: u64 = FULL_AMOUNT / 2;
     let base_asset_id = *ctx.alice.consensus_params.base_asset_id();
@@ -176,7 +176,11 @@ pub async fn dry_run_in_the_past(ctx: &TestContext) -> Result<(), Failed> {
         alice_full_coin,
         &base_asset_id,
     );
-    let result = ctx.alice.client.dry_run_opt(&[tx], None, None, None).await;
+    let result = ctx
+        .alice
+        .client
+        .dry_run_opt(&[tx], None, None, Some(height_after_transfer))
+        .await;
     assert!(result.is_err()); // TODO[RC]: Assert proper error message after figuring out how to properly add a coin.
 
     // Alice creates a transaction using her initial large coin and attempts to dry-run it
