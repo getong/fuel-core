@@ -151,7 +151,10 @@ pub async fn dry_run_transaction_in_the_past(ctx: &TestContext) -> Result<(), Fa
         .latest_block
         .header
         .height;
-    assert!(height_after_transfer > height_before_transfer);
+    assert!(
+        height_after_transfer > height_before_transfer,
+        "block height should increase"
+    );
 
     // Alice has HALF_AMOUNT units of base asset, reduced by the fee (?).
     assert_base_asset_amount(ctx, &ctx.alice.address, HALF_AMOUNT - 1).await;
@@ -172,7 +175,7 @@ pub async fn dry_run_transaction_in_the_past(ctx: &TestContext) -> Result<(), Fa
         .client
         .dry_run_opt(&[tx], None, None, Some(height_after_transfer))
         .await;
-    assert!(result.is_err()); // TODO[RC]: Assert proper error message after figuring out how to properly add a coin.
+    assert!(result.is_err(), "should dry run transaction in the present"); // TODO[RC]: Assert proper error message after figuring out how to properly add a coin.
 
     // Alice creates a transaction using her initial large coin and attempts to dry-run it
     // on top of the block where she still possessed the original coin.
@@ -190,7 +193,11 @@ pub async fn dry_run_transaction_in_the_past(ctx: &TestContext) -> Result<(), Fa
     // TODO[RC]: This should be ok ¯\_(ツ)_/¯
     // assert!(result.is_ok());
     let err = result.unwrap_err();
-    assert_eq!(err.to_string(), "?");
+    assert_eq!(
+        err.to_string(),
+        "?",
+        "should dry run transaction in the past"
+    );
 
     Ok(())
 }
