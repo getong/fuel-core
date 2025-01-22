@@ -64,6 +64,8 @@ use std::{
     path::Path,
 };
 
+use super::rocks_db::DatabaseConfig;
+
 pub mod description;
 pub mod modifications_history;
 pub mod view_at_height;
@@ -106,12 +108,10 @@ where
 
     pub fn default_open<P: AsRef<Path>>(
         path: P,
-        capacity: Option<usize>,
         state_rewind_policy: StateRewindPolicy,
-        max_fds: i32,
+        database_config: DatabaseConfig,
     ) -> DatabaseResult<Self> {
-        let db =
-            RocksDb::<Historical<Description>>::default_open(path, capacity, max_fds)?;
+        let db = RocksDb::<Historical<Description>>::default_open(path, database_config)?;
         Ok(Self {
             state_rewind_policy,
             db,
@@ -674,7 +674,7 @@ mod tests {
     #[test]
     fn historical_rocksdb_read_original_database_works() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db =
             HistoricalRocksDB::new(rocks_db, StateRewindPolicy::RewindFullRange).unwrap();
 
@@ -714,7 +714,7 @@ mod tests {
     #[test]
     fn historical_rocksdb_read_latest_view_works() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db =
             HistoricalRocksDB::new(rocks_db, StateRewindPolicy::RewindFullRange).unwrap();
 
@@ -754,7 +754,7 @@ mod tests {
     #[test]
     fn state_rewind_policy__no_rewind__create_view_at__fails() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db =
             HistoricalRocksDB::new(rocks_db, StateRewindPolicy::NoRewind).unwrap();
 
@@ -781,7 +781,7 @@ mod tests {
     #[test]
     fn state_rewind_policy__no_rewind__rollback__fails() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db =
             HistoricalRocksDB::new(rocks_db, StateRewindPolicy::NoRewind).unwrap();
 
@@ -804,7 +804,7 @@ mod tests {
     #[test]
     fn state_rewind_policy__rewind_range_1__cleanup_in_range_works() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db = HistoricalRocksDB::new(
             rocks_db,
             StateRewindPolicy::RewindRange {
@@ -851,7 +851,7 @@ mod tests {
     #[test]
     fn state_rewind_policy__rewind_range_1__rollback_works() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db = HistoricalRocksDB::new(
             rocks_db,
             StateRewindPolicy::RewindRange {
@@ -889,7 +889,7 @@ mod tests {
     #[test]
     fn state_rewind_policy__rewind_range_1__rollback_uses_v2() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db = HistoricalRocksDB::new(
             rocks_db,
             StateRewindPolicy::RewindRange {
@@ -924,7 +924,7 @@ mod tests {
     #[test]
     fn state_rewind_policy__rewind_range_1__rollback_during_migration_works() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db = HistoricalRocksDB::new(
             rocks_db,
             StateRewindPolicy::RewindRange {
@@ -998,7 +998,7 @@ mod tests {
     #[test]
     fn rollback_last_block_works_with_v2() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
 
         let historical_rocks_db =
             HistoricalRocksDB::new(rocks_db, StateRewindPolicy::RewindFullRange).unwrap();
@@ -1031,7 +1031,7 @@ mod tests {
     #[test]
     fn state_rewind_policy__rewind_range_1__second_rollback_fails() {
         // Given
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db = HistoricalRocksDB::new(
             rocks_db,
             StateRewindPolicy::RewindRange {
@@ -1061,7 +1061,7 @@ mod tests {
     fn state_rewind_policy__rewind_range_10__rollbacks_work() {
         const ITERATIONS: usize = 100;
 
-        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp(None).unwrap();
+        let rocks_db = RocksDb::<Historical<OnChain>>::default_open_temp().unwrap();
         let historical_rocks_db = HistoricalRocksDB::new(
             rocks_db,
             StateRewindPolicy::RewindRange {
