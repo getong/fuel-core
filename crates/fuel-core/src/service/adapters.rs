@@ -3,11 +3,9 @@ use fuel_core_consensus_module::{
     RelayerConsensusConfig,
 };
 use fuel_core_executor::executor::OnceTransactionsSource;
+use fuel_core_gas_price_service::v1::service::LatestGasPrice;
 use fuel_core_importer::ImporterResult;
-use fuel_core_poa::{
-    ports::BlockSigner,
-    signer::SignMode,
-};
+use fuel_core_poa::ports::BlockSigner;
 use fuel_core_services::stream::BoxStream;
 use fuel_core_storage::transactional::Changes;
 use fuel_core_txpool::BorrowedTxPool;
@@ -50,42 +48,11 @@ use crate::{
         vm_pool::MemoryPool,
     },
 };
-use fuel_core_consensus_module::{
-    block_verifier::Verifier,
-    RelayerConsensusConfig,
-};
-use fuel_core_executor::executor::OnceTransactionsSource;
-use fuel_core_gas_price_service::v1::service::LatestGasPrice;
-use fuel_core_importer::ImporterResult;
-use fuel_core_poa::ports::BlockSigner;
-use fuel_core_services::stream::BoxStream;
-use fuel_core_storage::transactional::Changes;
-use fuel_core_txpool::BorrowedTxPool;
-#[cfg(feature = "p2p")]
-use fuel_core_types::services::p2p::peer_reputation::AppScore;
 use fuel_core_types::{
-    blockchain::{
-        block::Block,
-        consensus::{
-            poa::PoAConsensus,
-            Consensus,
-        },
-    },
-    fuel_tx::Transaction,
+    blockchain::consensus::poa::PoAConsensus,
     fuel_types::BlockHeight,
-    services::{
-        block_importer::SharedImportResult,
-        block_producer::Components,
-        executor::{
-            Result as ExecutorResult,
-            UncommittedResult,
-        },
-    },
     signer::SignMode,
-    tai64::Tai64,
 };
-use fuel_core_upgradable_executor::executor::Executor;
-use std::sync::Arc;
 
 pub mod block_importer;
 pub mod consensus_module;

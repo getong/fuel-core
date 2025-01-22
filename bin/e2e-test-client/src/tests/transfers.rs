@@ -4,28 +4,19 @@ use crate::test_context::{
     TestContext,
     BASE_AMOUNT,
 };
-use fuel_core_client::client::{
-    pagination::{
-        PageDirection,
-        PaginationRequest,
-    },
-    types::{
-        CoinType,
-        TransactionStatus,
-    },
-    FuelClient,
+use fuel_core_client::client::pagination::{
+    PageDirection,
+    PaginationRequest,
 };
 use fuel_core_types::{
     fuel_tx::{
         Address,
         AssetId,
-        Input,
         Transaction,
         TransactionBuilder,
         UtxoId,
     },
     fuel_vm::SecretKey,
-    services::executor::TransactionExecutionResult,
 };
 use libtest_mimic::Failed;
 use tokio::time::timeout;

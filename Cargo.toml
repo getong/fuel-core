@@ -151,6 +151,8 @@ itertools = { version = "0.12", default-features = false }
 insta = "1.8"
 tempfile = "3.4"
 tikv-jemallocator = "0.5"
+url = "2.2"
+
 ## Add caching of the RocksDB for local development
 #librocksdb-sys = "0.11.0+8.1.1"
 #
@@ -159,4 +161,4 @@ tikv-jemallocator = "0.5"
 
 [patch.crates-io]
 fuel-vm = { path = "../fuel-vm/fuel-vm" }
-url = "2.2"
+
