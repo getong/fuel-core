@@ -12,6 +12,7 @@ use fuel_core_types::{
     fuel_tx::{
         Address,
         AssetId,
+        Input,
         Transaction,
         TransactionBuilder,
         UtxoId,
@@ -59,12 +60,12 @@ fn transfer_transaction(
 
     // "Response errors; Validity(InputWitnessIndexBounds { index: 0 })"
     // builder.add_input(Input::coin_signed(
-    // utxo_id,
-    // *from,
-    // AMOUNT,
-    // *asset_id,
-    // Default::default(),
-    // Default::default(),
+    //     utxo_id,
+    //     *from,
+    //     AMOUNT,
+    //     *asset_id,
+    //     Default::default(),
+    //     Default::default(),
     // ));
 
     // "Response errors; Transaction validity: PredicateVerificationFailed(\n    InvalidOwner,\n)" }
@@ -175,7 +176,10 @@ pub async fn dry_run_transaction_in_the_past(ctx: &TestContext) -> Result<(), Fa
         .client
         .dry_run_opt(&[tx], None, None, Some(height_after_transfer))
         .await;
-    assert!(result.is_err(), "should dry run transaction in the present"); // TODO[RC]: Assert proper error message after figuring out how to properly add a coin.
+    assert!(
+        result.is_err(),
+        "should not dry run transaction in the present"
+    ); // TODO[RC]: Assert proper error message after figuring out how to properly add a coin.
 
     // Alice creates a transaction using her initial large coin and attempts to dry-run it
     // on top of the block where she still possessed the original coin.

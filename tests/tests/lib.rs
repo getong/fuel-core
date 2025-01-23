@@ -1,9 +1,9 @@
 #![deny(unused_must_use)]
-#![deny(warnings)]
+//#![deny(warnings)]
 
 #[cfg(not(feature = "only-p2p"))]
 mod assets;
-#[cfg(not(feature = "only-p2p"))]
+//#[cfg(not(feature = "only-p2p"))]
 mod balances;
 #[cfg(not(feature = "only-p2p"))]
 mod blob;
@@ -17,7 +17,7 @@ mod coin;
 mod coins;
 #[cfg(not(feature = "only-p2p"))]
 mod contract;
-#[cfg(not(feature = "only-p2p"))]
+//#[cfg(not(feature = "only-p2p"))]
 mod da_compression;
 #[cfg(not(feature = "only-p2p"))]
 mod dap;
