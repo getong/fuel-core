@@ -318,10 +318,13 @@ where
         utxo_validation: Option<bool>,
         gas_price: Option<u64>,
     ) -> anyhow::Result<Vec<TransactionExecutionStatus>> {
+        println!("*** inside producer: transactions: {:?}, height: {:?}, time: {:?}, utxo_validation: {:?}, gas_price: {:?}", transactions, height, time, utxo_validation, gas_price);
+
         let view = self.view_provider.latest_view()?;
         let latest_height = view.latest_height().unwrap_or_default();
 
         let header = if let Some(simulated_height) = height {
+            println!("using simulated height A {simulated_height}");
             let block = view.get_block(&simulated_height)?;
 
             block.header().into()
@@ -329,6 +332,7 @@ where
             let simulated_height = latest_height
                 .succ()
                 .expect("It is impossible to overflow the current block height");
+            println!("using simulated height B {simulated_height}");
 
             let simulated_time = time.unwrap_or_else(|| {
                 view.get_block(&latest_height)

@@ -51,7 +51,7 @@ mod regenesis;
 mod relayer;
 #[cfg(not(feature = "only-p2p"))]
 mod snapshot;
-#[cfg(not(feature = "only-p2p"))]
+//#[cfg(not(feature = "only-p2p"))]
 mod state_rewind;
 #[cfg(not(feature = "only-p2p"))]
 mod trigger_integration;
