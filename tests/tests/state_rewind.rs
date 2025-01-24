@@ -767,3 +767,187 @@ mod dry_run_transaction_in_the_past {
         .await;
     }
 }
+
+mod contract_state_in_the_past {
+    use fuel_core::service::Config;
+    use fuel_core_bin::FuelService;
+    use fuel_core_client::client::{
+        types::TransactionStatus,
+        FuelClient,
+    };
+    use fuel_core_types::{
+        fuel_asm::{
+            op,
+            GTFArgs,
+            RegId,
+        },
+        fuel_tx::{
+            Bytes32,
+            ContractId,
+            CreateMetadata,
+            Finalizable,
+            Input,
+            Output,
+            StorageSlot,
+            TransactionBuilder,
+            UniqueIdentifier,
+            Word,
+        },
+        fuel_types::{
+            BlockHeight,
+            ChainId,
+        },
+        fuel_vm::Salt,
+    };
+    use futures::StreamExt;
+    use rand::{
+        Rng,
+        SeedableRng,
+    };
+
+    #[tokio::test]
+    async fn can_read_contract_state_from_the_past() {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0xBAADF00D);
+
+        let mut config = Config::local_node();
+        config.debug = true;
+        let srv = FuelService::new_node(config.clone()).await.unwrap();
+        let client = FuelClient::from(srv.bound_address);
+
+        let (contract_id, block_height) = make_counter_contract(&client, &mut rng).await;
+        dbg!(&contract_id);
+        dbg!(&block_height);
+
+        let block_height = increment_counter(&client, &mut rng, contract_id, 1).await;
+        dbg!(&block_height);
+
+        let block_height = increment_counter(&client, &mut rng, contract_id, 2).await;
+        dbg!(&block_height);
+
+        let block_height = increment_counter(&client, &mut rng, contract_id, 3).await;
+        dbg!(&block_height);
+
+        let block_height = increment_counter(&client, &mut rng, contract_id, 4).await;
+        dbg!(&block_height);
+    }
+
+    async fn make_counter_contract(
+        client: &FuelClient,
+        rng: &mut rand::rngs::StdRng,
+    ) -> (ContractId, BlockHeight) {
+        let maturity = Default::default();
+
+        let code: Vec<_> = [
+            // Make zero key
+            // [RC]: Move 32 (0x20) into register 0x12
+            op::movi(0x12, 32),
+            // [RC]: Allocate 32 bytes of memory - memory is ZEROED (!)
+            // touches $hp
+            op::aloc(0x12),
+            // Read value
+            // [RC]:
+            // srw $rA, $rB, $rC     -->     $rA = STATE[MEM[$rC, 32]][0, 8];
+            // A = MEM[$rC, 32]] - 32 bytes of memory starting from the address in register 0x12 (?)
+            // B = STATE[A] - accesses the state at the address/key in A (?)
+            // C = B[0, 8] - extracts the first 8 bytes (Word is 8 bytes?)
+            // Stores the value that has been read in register 0x10 - should store ALL ZEROES
+            // 0x11 is unused (?)
+            op::srw(0x10, 0x11, 0x12),
+            // Increment value
+            // [RC]:
+            // - Adds 1 to the value in register 0x10 (should be ALL ZEROES+1, hence 1)
+            // - Stores the result in register 0x10
+            op::addi(0x10, 0x10, 1),
+            // Write value
+            // [RC]:
+            // sww $rA $rB $rC     -->     STATE[MEM[$rA, 32]][0, 8] = $rC;
+            // A = MEM[$rA, 32]] - 32 bytes of memory starting from the address in register 0x12
+            // B = STATE[A] - accesses the state at the address/key in A (?)
+            // C = B[0, 8] - extracts the first 8 bytes
+            // Stores the value from register 0x10 into the state
+            // 0x11 is unused (?)
+            op::sww(0x12, 0x11, 0x10),
+            // Return new counter value
+            op::ret(0x10),
+        ]
+        .into_iter()
+        .collect();
+
+        let salt: Salt = rng.gen();
+        let tx = TransactionBuilder::create(
+            code.into(),
+            salt,
+            vec![StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed())],
+        )
+        .maturity(maturity)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize();
+
+        let contract_id = CreateMetadata::compute(&tx).unwrap().contract_id;
+
+        let mut status_stream = client.submit_and_await_status(&tx.into()).await.unwrap();
+        let intermediate_status = status_stream.next().await.unwrap().unwrap();
+        assert!(matches!(
+            intermediate_status,
+            TransactionStatus::Submitted { .. }
+        ));
+        let final_status = status_stream.next().await.unwrap().unwrap();
+        let TransactionStatus::Success { block_height, .. } = final_status else {
+            panic!("Tx wasn't included in a block: {:?}", final_status);
+        };
+        (contract_id, block_height)
+    }
+
+    async fn increment_counter(
+        client: &FuelClient,
+        rng: &mut rand::rngs::StdRng,
+        contract_id: ContractId,
+        tip: Word,
+    ) -> BlockHeight {
+        let gas_limit = 1_000_000;
+        let maturity = Default::default();
+
+        let script = [
+            op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+            op::ret(RegId::ONE),
+        ];
+
+        let mut script_data = contract_id.to_vec();
+        script_data.extend(0u64.to_be_bytes());
+        script_data.extend(0u64.to_be_bytes());
+
+        let tx = TransactionBuilder::script(script.into_iter().collect(), script_data)
+            .script_gas_limit(gas_limit)
+            .max_fee_limit(1000)
+            .maturity(maturity)
+            .add_fee_input()
+            .tip(tip) // Without different tip, we've been getting the same TxId
+            .add_input(Input::contract(
+                Default::default(),
+                rng.gen(),
+                rng.gen(),
+                Default::default(),
+                contract_id,
+            ))
+            .add_output(Output::contract(1, Default::default(), Default::default()))
+            .finalize_as_transaction();
+
+        let tx_id = tx.id(&ChainId::default());
+        dbg!(&tx_id);
+
+        let mut status_stream = client.submit_and_await_status(&tx).await.unwrap();
+        let intermediate_status = status_stream.next().await.unwrap().unwrap();
+        assert!(matches!(
+            intermediate_status,
+            TransactionStatus::Submitted { .. }
+        ));
+        let final_status = status_stream.next().await.unwrap().unwrap();
+        let TransactionStatus::Success { block_height, .. } = final_status else {
+            panic!("Tx wasn't included in a block: {:?}", final_status);
+        };
+        block_height
+    }
+}
