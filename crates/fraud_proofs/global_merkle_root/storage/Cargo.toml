@@ -28,6 +28,9 @@ fuel-core-storage = { workspace = true, default-features = false, features = [
   "test-helpers",
 ] }
 rand = { workspace = true }
+fuel-core-types = { workspace = true, features = [
+  "test-helpers",
+] }
 
 [features]
 default = ["std"]
