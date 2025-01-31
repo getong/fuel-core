@@ -360,15 +360,10 @@ mod tests {
             Bytes32,
             Contract,
             ContractId,
-            Create,
-            Finalizable,
-            TransactionBuilder,
             TxId,
         },
-        fuel_vm::{
-            CallFrame,
-            Salt,
-        },
+        fuel_vm::CallFrame,
+        test_helpers::create_contract,
     };
 
     use rand::{
@@ -590,13 +585,8 @@ mod tests {
         .collect::<Vec<u8>>();
 
         let mut rng = StdRng::seed_from_u64(1337);
-        let create_contract_tx = create_contract(&contract_bytecode, &mut rng);
-        let contract_id = create_contract_tx
-            .metadata()
-            .as_ref()
-            .unwrap()
-            .body
-            .contract_id;
+        let (create_contract_tx, contract_id) =
+            create_contract(contract_bytecode.clone(), &mut rng);
 
         let mut storage: InMemoryStorage<Column> = InMemoryStorage::default();
         let mut storage_tx = storage.write_transaction();
