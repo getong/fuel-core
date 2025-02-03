@@ -160,10 +160,7 @@ where
         let Some(Output::ContractCreated { contract_id, .. }) = tx
             .outputs()
             .iter()
-            .filter(|output| match output {
-                Output::ContractCreated { .. } => true,
-                _ => false,
-            })
+            .filter(|output| matches!(output, Output::ContractCreated { .. }))
             .take(1)
             .collect::<Vec<&Output>>()
             .first()
@@ -173,7 +170,7 @@ where
 
         self.storage
             .storage_as_mut::<ContractsRawCode>()
-            .insert(&contract_id, bytecode)?;
+            .insert(contract_id, bytecode)?;
         Ok(())
     }
 
