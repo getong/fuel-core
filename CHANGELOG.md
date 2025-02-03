@@ -20,7 +20,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [2598](https://github.com/FuelLabs/fuel-core/pull/2598): Add initial test suite for global merkle root storage updates.
 - [2652](https://github.com/FuelLabs/fuel-core/pull/2652): Global Merkle Root storage crate: Add Raw contract bytecode to global merkle root storage when processing Create transactions.
 
-
 ### Fixed
 - [2632](https://github.com/FuelLabs/fuel-core/pull/2632): Improved performance of certain async trait impls in the gas price service.
 
