@@ -173,6 +173,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: "DEBUG_SYMBOLS=true"
 
+
   publish-e2e-client-docker-image:
     needs:
       - publish-docker-images
